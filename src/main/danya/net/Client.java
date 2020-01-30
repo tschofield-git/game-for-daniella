@@ -31,7 +31,7 @@ public class Client {
     public void sendKeyEvent(KeyEvent keyEvent){
         LOGGER.info("Sending keyEvent " + keyEvent.toString());
         try {
-            dOut.writeUTF(keyEvent.getCode().toString());
+            dOut.writeUTF(keyEvent.getCode().toString() + "\n");
             dOut.flush();
         } catch (IOException e) {
             LOGGER.severe(e.getMessage());
