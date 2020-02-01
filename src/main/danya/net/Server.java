@@ -1,21 +1,26 @@
 package danya.net;
 
-import java.io.BufferedReader;
+import danya.Lock;
+
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.*;
 import java.util.Enumeration;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.logging.Logger;
 
 public class Server extends Thread{
 
-    private ServerSocket serverSocket;
+    private final ServerSocket serverSocket;
     private static final Logger LOGGER = Logger.getLogger(Server.class.getName());
     private boolean keepServerAlive = true;
+    private final LinkedList<Client> clientList;
+    private static final int MAX_NUMBER_OF_CLIENTS = 2;
 
     public Server() throws IOException {
         InetAddress ipAddress = getCurrentIp();
         serverSocket = new ServerSocket(0, 1, ipAddress);
+        clientList = new LinkedList<>();
     }
 
     private InetAddress getCurrentIp() {
@@ -41,16 +46,18 @@ public class Server extends Thread{
         return null;
     }
 
-    private void listen() throws IOException {
-        String data = null;
-        Socket client = this.serverSocket.accept();
-        String clientAddress = client.getInetAddress().getHostAddress();
-        LOGGER.info("New connection from " + clientAddress);
+    private void acceptConnection() throws IOException {
+        Socket connection = serverSocket.accept();
+        Client client = new Client(connection);
+        clientList.add(client);
+        String clientAddress = connection.getInetAddress().getHostAddress();
+        LOGGER.info(() -> "New connection from " + clientAddress);
+        releaseLockForHostPane();
+    }
 
-        BufferedReader in = new BufferedReader(
-                new InputStreamReader(client.getInputStream()));
-        while ( (data = in.readLine()) != null ) {
-            LOGGER.info("Message from " + clientAddress + ": " + data);
+    private void releaseLockForHostPane() {
+        synchronized (Lock.WAIT_FOR_CLIENTS_TO_CONNECT){
+            Lock.WAIT_FOR_CLIENTS_TO_CONNECT.notifyAll();
         }
     }
 
@@ -58,17 +65,62 @@ public class Server extends Thread{
     public void run(){
         LOGGER.info("Running Server: " + serverSocket.getInetAddress().getHostAddress() + ":" + serverSocket.getLocalPort());
         try {
-            while (keepServerAlive) {
-                listen();
-            }
+            waitForAllClientsToConnect();
+            alertClientsOfGameStart();
+            doMainGameLoop();
         } catch (IOException e) {
             LOGGER.severe(e.getMessage());
         }
     }
 
+    private void alertClientsOfGameStart() {
+        for(Client client : clientList){
+            client.getMessagePasser().sendMessageFromServer("Game starting");
+        }
+    }
+
+    private void doMainGameLoop() throws IOException {
+        while (keepServerAlive) {
+            for(Client client : clientList){
+                readFromClient(client);
+                // Feed back to client
+            }
+        }
+    }
+
+    private void waitForAllClientsToConnect() throws IOException {
+        while (!allClientsConnected()) {
+            acceptConnection();
+        }
+        LOGGER.info("All clients connected!");
+    }
+
+    private void readFromClient(Client client) throws IOException {
+        MessagePasser messagePasser = client.getMessagePasser();
+        while(messagePasser.hasNext()){
+            Message message = messagePasser.nextMessage();
+            if(message.getSender().equals(Message.SERVER_PREFIX)) continue;
+            handleClientMessage(message);
+        }
+    }
+
+    private void handleClientMessage(Message message){
+        LOGGER.info(() -> "Server received message: " + message.toString());
+    }
+
+    private Runnable checkClientsStillConnected(){
+//        return () -> {
+//            for(Client client : connectionList){
+//                MessagePasser messagePasser = clientMessagePasserMap.get(client);
+//                messagePasser.nextMessage().equals("-1");
+//            }
+//        };
+        return null;
+    }
+
     public void shutdownServer(){
-        LOGGER.info("Shutting down Server: " + serverSocket.getInetAddress().getHostAddress() + ":" + serverSocket.getLocalPort());
         keepServerAlive = false;
+        LOGGER.info("Shutting down Server: " + serverSocket.getInetAddress().getHostAddress() + ":" + serverSocket.getLocalPort());
         try {
             serverSocket.close();
         } catch (IOException e) {
@@ -76,11 +128,19 @@ public class Server extends Thread{
         }
     }
 
-    public InetAddress getServerAddress(){
-        return serverSocket.getInetAddress();
+    private boolean allClientsConnected(){
+        return clientList.size() == MAX_NUMBER_OF_CLIENTS;
     }
 
-    public int getServerPort(){
-        return serverSocket.getLocalPort();
+    public boolean isAnyoneConnected() {
+        return !clientList.isEmpty();
+    }
+
+    public List<Client> getConnectedClients(){
+        return clientList;
+    }
+
+    public ConnectionDetails getConnectionDetails(){
+        return new ConnectionDetails(serverSocket.getInetAddress(), serverSocket.getLocalPort());
     }
 }

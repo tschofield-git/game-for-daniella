@@ -1,52 +1,70 @@
 package danya.net;
 
+import danya.Lock;
+import javafx.concurrent.Task;
 import javafx.scene.input.KeyEvent;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.Socket;
 import java.util.logging.Logger;
 
 public class Client {
 
-    Socket socket;
-    DataOutputStream dOut;
+    private Socket socket;
     private static final Logger LOGGER = Logger.getLogger(Client.class.getName());
 
-    public Client(Server server){
-        new Client(server.getServerAddress().getHostAddress(), server.getServerPort());
+    private MessagePasser messagePasser;
+
+    public Client(ConnectionDetails connectionDetails){
+        initialise(createSocketConnection(connectionDetails));
     }
 
-    public Client(String hostIP, int port){
-        LOGGER.info("Connecting to " + hostIP + " on port " + port);
+    public Client(Socket socket){
+        initialise(socket);
+    }
+
+    private Socket createSocketConnection(ConnectionDetails connectionDetails){
+        LOGGER.info("Connecting to " + connectionDetails.getHostAddress() + " on port " + connectionDetails.getPortNumber());
+        Socket connection = null;
         try {
-            socket = new Socket(InetAddress.getByName(hostIP), port);
-            dOut = new DataOutputStream(socket.getOutputStream());
+            connection = new Socket(connectionDetails.getHostAddress(), connectionDetails.getPortNumber());
+        } catch (IOException e) {
+            LOGGER.severe(e.getMessage());
+        }
+        return connection;
+    }
+
+    private void initialise(Socket socket){
+        this.socket = socket;
+        createMessagePasser();
+    }
+
+    private void createMessagePasser() {
+        try {
+            this.messagePasser = new MessagePasser(socket);
         } catch (IOException e) {
             LOGGER.severe(e.getMessage());
         }
     }
 
     public void sendKeyEvent(KeyEvent keyEvent){
-        LOGGER.info("Sending keyEvent " + keyEvent.toString());
-        try {
-            dOut.writeUTF(keyEvent.getCode().toString() + "\n");
-            dOut.flush();
-        } catch (IOException e) {
-            LOGGER.severe(e.getMessage());
-        }
+        String message = keyEvent.getEventType().getName() + "|" + keyEvent.getCode();
+        LOGGER.info(() -> "Sending keyEvent " + message);
+        messagePasser.sendMessageFromClient(message);
     }
 
     public void closeClientConnection(){
         LOGGER.info("Closing client connection");
         try {
+            messagePasser.sendMessageFromClient("-1");
             socket.close();
-            dOut.writeByte(-1);
-            dOut.close();
         } catch (IOException e) {
             LOGGER.severe(e.getMessage());
         }
+    }
+
+    public MessagePasser getMessagePasser(){
+        return messagePasser;
     }
 
 }
