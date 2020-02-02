@@ -12,7 +12,7 @@ import java.util.logging.Logger;
 public class ClientPane extends GridPane {
 
     private static final Logger LOGGER = Logger.getLogger(ClientPane.class.getName());
-    Task waitForHostToStartGame;
+    Task<Void> waitForHostToStartGame;
     boolean gameStarted = false;
 
     Client client;
@@ -34,13 +34,13 @@ public class ClientPane extends GridPane {
     }
 
     private Task<Void> waitForHostToStartGame() {
-
         return new Task<>() {
             @Override
             protected Void call() throws Exception {
                 synchronized (Lock.WAIT_FOR_HOST_TO_START){
                     while(!gameStarted){
                         if(isCancelled()) break;
+                        LOGGER.info("Waiting for game to start");
                         Lock.WAIT_FOR_HOST_TO_START.wait();
                         gameStarted = true;
                     }

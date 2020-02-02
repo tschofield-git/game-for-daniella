@@ -75,7 +75,7 @@ public class Server extends Thread{
 
     private void alertClientsOfGameStart() {
         for(Client client : clientList){
-            client.getMessagePasser().sendMessageFromServer("Game starting");
+            client.getMessagePasser().sendMessageFromServer(Message.GAME_START);
         }
     }
 

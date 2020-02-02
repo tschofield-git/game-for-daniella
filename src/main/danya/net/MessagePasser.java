@@ -1,5 +1,7 @@
 package danya.net;
 
+import danya.Lock;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -62,6 +64,14 @@ public class MessagePasser {
 
     private void handleReceivedMessage(Message message) {
         LOGGER.info(() -> "Client received message from server: " + message.toString());
+        if(message.getContent().equals(Message.GAME_START)) releaseLock();
+    }
+
+    private void releaseLock() {
+        synchronized (Lock.WAIT_FOR_HOST_TO_START){
+            LOGGER.info("Server: Game starting");
+            Lock.WAIT_FOR_HOST_TO_START.notifyAll();
+        }
     }
 
     public Message nextMessage(){

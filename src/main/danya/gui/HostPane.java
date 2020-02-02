@@ -42,11 +42,11 @@ public class HostPane extends GridPane {
 
         startGameButton = new Button("Start game");
         startGameButton.setDisable(true);
-        startGameButton.addEventHandler(MouseEvent.MOUSE_CLICKED, onMouseClick -> startGame());
+        startGameButton.setOnAction(onClick -> startGame());
         add(startGameButton, 0, 1);
 
         Button cancelGameButton = new Button("Cancel game");
-        cancelGameButton.addEventHandler(MouseEvent.MOUSE_CLICKED, onMouseClick -> cancelGame());
+        cancelGameButton.setOnAction(onClick -> cancelGame());
         add(cancelGameButton, 2, 2);
     }
 
@@ -57,14 +57,7 @@ public class HostPane extends GridPane {
     }
 
     private void startGame(){
-        releaseLock();
         switchToGamePane();
-    }
-
-    private void releaseLock() {
-        synchronized (Lock.WAIT_FOR_HOST_TO_START){
-            Lock.WAIT_FOR_HOST_TO_START.notifyAll();
-        }
     }
 
     private void switchToGamePane(){

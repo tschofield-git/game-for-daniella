@@ -4,7 +4,7 @@ public class Message {
 
     public static final String CLIENT_PREFIX = "CLIENT";
     public static final String SERVER_PREFIX = "SERVER";
-    public static final String SYSTEM_PREFIX = "SYSTEM";
+    public static final String GAME_START = "GAME_IS_STARTED";
 
     private static final String DELIMITER = "/";
 
@@ -29,5 +29,10 @@ public class Message {
     public String getSender() {
         return sender;
     }
+
+    public String getContent() {
+        return content;
+    }
+
 
 }
