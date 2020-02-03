@@ -1,7 +1,6 @@
 package danya.net;
 
-import danya.Lock;
-import javafx.concurrent.Task;
+import danya.net.messaging.*;
 import javafx.scene.input.KeyEvent;
 
 import java.io.IOException;
@@ -13,7 +12,7 @@ public class Client {
     private Socket socket;
     private static final Logger LOGGER = Logger.getLogger(Client.class.getName());
 
-    private MessagePasser messagePasser;
+    private MessageHandler messageHandler;
 
     public Client(ConnectionDetails connectionDetails){
         initialise(createSocketConnection(connectionDetails));
@@ -41,30 +40,31 @@ public class Client {
 
     private void createMessagePasser() {
         try {
-            this.messagePasser = new MessagePasser(socket);
+            this.messageHandler = new MessageHandler(socket);
         } catch (IOException e) {
             LOGGER.severe(e.getMessage());
         }
     }
 
     public void sendKeyEvent(KeyEvent keyEvent){
-        String message = keyEvent.getEventType().getName() + "|" + keyEvent.getCode();
-        LOGGER.info(() -> "Sending keyEvent " + message);
-        messagePasser.sendMessageFromClient(message);
+        String content = keyEvent.getEventType().getName() + "|" + keyEvent.getCode();
+        Message message = new Message(Sender.CLIENT, MessageType.KEY_INPUT, content);
+        messageHandler.sendMessage(message);
     }
 
     public void closeClientConnection(){
         LOGGER.info("Closing client connection");
         try {
-            messagePasser.sendMessageFromClient("-1");
+            Message message = new Message(Sender.CLIENT, MessageType.SYSTEM, SystemMessage.GOODBYE);
+            messageHandler.sendMessage(message);
             socket.close();
         } catch (IOException e) {
             LOGGER.severe(e.getMessage());
         }
     }
 
-    public MessagePasser getMessagePasser(){
-        return messagePasser;
+    public MessageHandler getMessageHandler(){
+        return messageHandler;
     }
 
 }

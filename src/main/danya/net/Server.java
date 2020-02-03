@@ -1,6 +1,7 @@
 package danya.net;
 
 import danya.Lock;
+import danya.net.messaging.*;
 
 import java.io.IOException;
 import java.net.*;
@@ -75,7 +76,8 @@ public class Server extends Thread{
 
     private void alertClientsOfGameStart() {
         for(Client client : clientList){
-            client.getMessagePasser().sendMessageFromServer(Message.GAME_START);
+            Message message = new Message(Sender.SERVER, MessageType.SYSTEM, SystemMessage.GAME_START);
+            client.getMessageHandler().sendMessage(message);
         }
     }
 
@@ -95,17 +97,18 @@ public class Server extends Thread{
         LOGGER.info("All clients connected!");
     }
 
-    private void readFromClient(Client client) throws IOException {
-        MessagePasser messagePasser = client.getMessagePasser();
-        while(messagePasser.hasNext()){
-            Message message = messagePasser.nextMessage();
-            if(message.getSender().equals(Message.SERVER_PREFIX)) continue;
+    private void readFromClient(Client client) {
+        MessageHandler messageHandler = client.getMessageHandler();
+        Message message;
+        while((message = messageHandler.readMessage()) != null){
+            if(message.getSender().equals(Sender.SERVER)) continue;
             handleClientMessage(message);
         }
     }
 
     private void handleClientMessage(Message message){
         LOGGER.info(() -> "Server received message: " + message.toString());
+        //GameLogic.handleMessage(message);
     }
 
     private Runnable checkClientsStillConnected(){
