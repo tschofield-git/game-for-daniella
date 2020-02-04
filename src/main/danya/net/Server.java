@@ -111,6 +111,32 @@ public class Server extends Thread{
         //GameLogic.handleMessage(message);
     }
 
+    private void handleMessage(Message message) {
+        LOGGER.info(() -> "Handling message: " + message.toString());
+        switch(message.getMessageType()){
+            case KEY_INPUT:
+                handleKeyInput();
+                break;
+            case MOUSE_INPUT:
+                handleMouseInput();
+                break;
+            case CHAT_MESSAGE:
+                handleChatMessage();
+                break;
+            default:
+                LOGGER.severe("Invalid Message type");
+        }
+    }
+
+    private void handleKeyInput() {
+    }
+
+    private void handleMouseInput() {
+    }
+
+    private void handleChatMessage() {
+    }
+
     private Runnable checkClientsStillConnected(){
 //        return () -> {
 //            for(Client client : connectionList){

@@ -30,44 +30,8 @@ public class MessageHandler {
         return messageListener.getNextMessage();
     }
 
-    private void handleMessage(Message message) {
-        LOGGER.info(() -> "Handling message: " + message.toString());
-        switch(message.getMessageType()){
-            case SYSTEM:
-                handleSystemMessage(message.getContent());
-                break;
-            case KEY_INPUT:
-                handleKeyInput();
-                break;
-            case MOUSE_INPUT:
-                handleMouseInput();
-                break;
-            case CHAT_MESSAGE:
-                handleChatMessage();
-                break;
-            default:
-                LOGGER.severe("Invalid Message type");
-        }
-    }
-
-    private void handleSystemMessage(String content) {
-        if(content.equals(SystemMessage.GAME_START)) releaseGameStartLock();
-    }
-
-    private void releaseGameStartLock() {
-        synchronized (Lock.WAIT_FOR_HOST_TO_START){
-            LOGGER.info("Server: Game starting");
-            Lock.WAIT_FOR_HOST_TO_START.notifyAll();
-        }
-    }
-
-    private void handleKeyInput() {
-    }
-
-    private void handleMouseInput() {
-    }
-
-    private void handleChatMessage() {
+    public boolean hasMessage(){
+        return messageListener.hasNext();
     }
 
 }
