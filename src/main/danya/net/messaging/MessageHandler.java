@@ -1,7 +1,5 @@
 package danya.net.messaging;
 
-import danya.Lock;
-
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -13,25 +11,42 @@ public class MessageHandler {
 
     private static final Logger LOGGER = Logger.getLogger(MessageHandler.class.getName());
 
-    private final MessageSender messageSender;
-    private final MessageListener messageListener;
+    private final DataOutputStream dataOutputStream;
+    private final DataInputStream dataInputStream;
 
     public MessageHandler(Socket socket) throws IOException {
-        messageSender = new MessageSender(socket.getOutputStream());
-        messageListener = new MessageListener(socket.getInputStream());
-        messageListener.startListening();
+        dataOutputStream = new DataOutputStream(socket.getOutputStream());
+        dataInputStream = new DataInputStream(socket.getInputStream());
     }
 
     public void sendMessage(Message message){
-        messageSender.sendMessage(message);
+        LOGGER.info(() -> "Sending message " + message);
+        try {
+            dataOutputStream.writeUTF(message.toString());
+            dataOutputStream.flush();
+        } catch (IOException e) {
+            LOGGER.severe(e.getMessage());
+        }
     }
 
     public Message readMessage(){
-        return messageListener.getNextMessage();
+        try {
+            // readUTF should block until a message is available
+            String received = dataInputStream.readUTF();
+            return Message.parseMessage(received);
+        } catch (IOException e) {
+            LOGGER.severe(e.getMessage());
+        }
+        return null;
     }
 
     public boolean hasMessage(){
-        return messageListener.hasNext();
+        try {
+            return dataInputStream.available() > 0;
+        } catch (IOException e) {
+            LOGGER.severe(e.getMessage());
+        }
+        return false;
     }
 
 }

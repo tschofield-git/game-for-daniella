@@ -6,7 +6,6 @@ import danya.net.Server;
 import javafx.concurrent.Task;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
 
 import java.io.IOException;
@@ -16,6 +15,7 @@ public class HostPane extends GridPane {
 
     private static final Logger LOGGER = Logger.getLogger(HostPane.class.getName());
     Server server;
+    Client client;
 
     Label connectedClients;
     Button startGameButton;
@@ -23,6 +23,13 @@ public class HostPane extends GridPane {
     Task<Void> waitForClientsToConnect;
 
     public HostPane(){
+        startServer();
+        createClientForHost();
+        addComponentsToPane();
+        new Thread(waitForClientsToConnect).start();
+    }
+
+    private void startServer() {
         server = null;
         try {
             server = new Server();
@@ -30,9 +37,12 @@ public class HostPane extends GridPane {
         } catch (IOException e) {
             LOGGER.severe(e.getMessage());
         }
-        addComponentsToPane();
-        new Thread(waitForClientsToConnect).start();
     }
+
+    private void createClientForHost() {
+        client = new Client(server.getConnectionDetails());
+    }
+
 
     private void addComponentsToPane() {
         waitForClientsToConnect = waitForClientsToConnect();
@@ -51,17 +61,25 @@ public class HostPane extends GridPane {
     }
 
     private void cancelGame() {
+        client.closeClientConnection();
         server.shutdownServer();
         MenuPane menuPane = new MenuPane();
         this.getScene().setRoot(menuPane);
     }
 
     private void startGame(){
+        notifyServerOfStartGameClicked();
         switchToGamePane();
     }
 
+    private void notifyServerOfStartGameClicked() {
+        server.setGameStartedToTrue();
+        synchronized (Lock.WAIT_FOR_START_GAME_CLICKED) {
+            Lock.WAIT_FOR_START_GAME_CLICKED.notifyAll();
+        }
+    }
+
     private void switchToGamePane(){
-        Client client = new Client(server.getConnectionDetails());
         GamePane gamePane = new GamePane(client);
         PaneController.switchPane(gamePane);
         gamePane.addKeyListeners();

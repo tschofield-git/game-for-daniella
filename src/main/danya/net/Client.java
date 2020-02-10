@@ -11,18 +11,16 @@ import java.util.logging.Logger;
 
 public class Client {
 
-    private Socket socket;
+    private final Socket socket;
     private static final Logger LOGGER = Logger.getLogger(Client.class.getName());
     private boolean keepClientAlive = true;
 
     private MessageHandler messageHandler;
 
     public Client(ConnectionDetails connectionDetails){
-        initialise(createSocketConnection(connectionDetails));
-    }
-
-    public Client(Socket socket){
-        initialise(socket);
+        socket = createSocketConnection(connectionDetails);
+        createMessageHandler();
+        new Thread(listenForServerMessages()).start();
     }
 
     private Socket createSocketConnection(ConnectionDetails connectionDetails){
@@ -36,12 +34,6 @@ public class Client {
         return connection;
     }
 
-    private void initialise(Socket socket){
-        this.socket = socket;
-        createMessageHandler();
-        new Thread(listenForServerMessages()).start();
-    }
-
     private void createMessageHandler() {
         try {
             this.messageHandler = new MessageHandler(socket);
@@ -52,7 +44,7 @@ public class Client {
 
     public void sendKeyEvent(KeyEvent keyEvent){
         String content = keyEvent.getEventType().getName() + "|" + keyEvent.getCode();
-        Message message = new Message(Sender.CLIENT, MessageType.KEY_INPUT, content);
+        Message message = new Message(MessageType.KEY_INPUT, content);
         messageHandler.sendMessage(message);
     }
 
@@ -61,11 +53,6 @@ public class Client {
             @Override
             protected Void call() throws Exception {
                 while(keepClientAlive) {
-                    while (!messageHandler.hasMessage()) {
-                        synchronized (Lock.WAIT_FOR_SERVER_MESSAGE) {
-                            Lock.WAIT_FOR_SERVER_MESSAGE.wait();
-                        }
-                    }
                     Message message = messageHandler.readMessage();
                     LOGGER.info(message::toString);
                     handleMessage(message);
@@ -103,14 +90,11 @@ public class Client {
     private void handleChatMessage() {
     }
 
-    public MessageHandler getMessageHandler(){
-        return messageHandler;
-    }
-
     public void closeClientConnection(){
         LOGGER.info("Closing client connection");
+        keepClientAlive = false;
         try {
-            Message message = new Message(Sender.CLIENT, MessageType.SYSTEM, SystemMessage.GOODBYE);
+            Message message = new Message(MessageType.SYSTEM, SystemMessage.GOODBYE);
             messageHandler.sendMessage(message);
             socket.close();
         } catch (IOException e) {

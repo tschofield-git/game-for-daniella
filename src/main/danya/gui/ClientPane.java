@@ -4,6 +4,7 @@ import danya.Lock;
 import danya.net.Client;
 import danya.net.ConnectionDetails;
 import javafx.concurrent.Task;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
 
@@ -23,8 +24,18 @@ public class ClientPane extends GridPane {
         Label label = new Label("Waiting for host to start game...");
         add(label, 0, 0);
 
+        Button button = new Button("Quit");
+        button.setOnAction(onClick -> stopWaitingForHost());
+        add(button, 1, 1);
+
         waitForHostToStartGame = waitForHostToStartGame();
         new Thread(waitForHostToStartGame).start();
+    }
+
+    private void stopWaitingForHost() {
+        client.closeClientConnection();
+        MenuPane menuPane = new MenuPane();
+        this.getScene().setRoot(menuPane);
     }
 
     private void switchToGamePane(){
