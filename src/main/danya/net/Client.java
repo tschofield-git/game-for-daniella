@@ -11,9 +11,10 @@ import java.util.logging.Logger;
 
 public class Client {
 
-    private final Socket socket;
     private static final Logger LOGGER = Logger.getLogger(Client.class.getName());
-    private boolean keepClientAlive = true;
+
+    private final Socket socket;
+    private boolean keepListeningForServerMessages = true;
 
     private MessageHandler messageHandler;
 
@@ -28,6 +29,7 @@ public class Client {
         Socket connection = null;
         try {
             connection = new Socket(connectionDetails.getHostAddress(), connectionDetails.getPortNumber());
+            LOGGER.info("Connected successfully");
         } catch (IOException e) {
             LOGGER.severe(e.getMessage());
         }
@@ -40,6 +42,7 @@ public class Client {
         } catch (IOException e) {
             LOGGER.severe(e.getMessage());
         }
+        LOGGER.info("Message handler created successfully");
     }
 
     public void sendKeyEvent(KeyEvent keyEvent){
@@ -48,11 +51,21 @@ public class Client {
         messageHandler.sendMessage(message);
     }
 
+    public void sendChatMessage(String content){
+        Message message = new Message(MessageType.CHAT_MESSAGE, content);
+        messageHandler.sendMessage(message);
+    }
+
+    public GameUpdatePacket readGameUpdatePacket(){
+        return (GameUpdatePacket) messageHandler.readMessage();
+    }
+
     private Task<Void> listenForServerMessages() {
         return new Task<>() {
             @Override
             protected Void call() throws Exception {
-                while(keepClientAlive) {
+                LOGGER.info("Client is now listening for messages");
+                while(keepListeningForServerMessages) {
                     Message message = messageHandler.readMessage();
                     LOGGER.info(message::toString);
                     handleMessage(message);
@@ -68,16 +81,16 @@ public class Client {
             case SYSTEM:
                 handleSystemMessage(message.getContent());
                 break;
-            case CHAT_MESSAGE:
-                handleChatMessage();
-                break;
             default:
                 LOGGER.severe("Invalid Message type");
         }
     }
 
     private void handleSystemMessage(String content) {
-        if(content.equals(SystemMessage.GAME_START)) releaseGameStartLock();
+        if(content.equals(SystemMessage.GAME_START)) {
+            releaseGameStartLock();
+            keepListeningForServerMessages = false;
+        }
     }
 
     private void releaseGameStartLock() {
@@ -87,12 +100,9 @@ public class Client {
         }
     }
 
-    private void handleChatMessage() {
-    }
-
     public void closeClientConnection(){
         LOGGER.info("Closing client connection");
-        keepClientAlive = false;
+        keepListeningForServerMessages = false;
         try {
             Message message = new Message(MessageType.SYSTEM, SystemMessage.GOODBYE);
             messageHandler.sendMessage(message);

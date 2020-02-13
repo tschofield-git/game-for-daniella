@@ -2,10 +2,12 @@ package danya.net;
 
 import danya.Lock;
 import danya.net.messaging.*;
+import javafx.concurrent.Task;
 
 import java.io.IOException;
 import java.net.*;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -19,12 +21,17 @@ public class Server extends Thread{
     private boolean gameStarted = false;
 
     private final LinkedList<MessageHandler> messageHandlersForEachClientConnection;
+    private final HashMap<MessageHandler, LinkedList<Message>> messageBufferForEachClientConnection;
+
     private static final int MAX_NUMBER_OF_CLIENTS = 2;
+
+    private GameUpdatePacket gameUpdatePacket;
 
     public Server() throws IOException {
         InetAddress ipAddress = getCurrentIp();
         serverSocket = new ServerSocket(0, 1, ipAddress);
         messageHandlersForEachClientConnection = new LinkedList<>();
+        messageBufferForEachClientConnection = new HashMap<>();
     }
 
     @Override
@@ -47,15 +54,22 @@ public class Server extends Thread{
     }
 
     private void waitForAllClientsToConnect() throws IOException {
-        while (keepServerAlive && !allClientsConnected()) {
+        while (keepServerAlive && !areAllClientsConnected()) {
             acceptConnection();
         }
     }
 
     private void acceptConnection() throws IOException {
         Socket connection = serverSocket.accept();
+
         MessageHandler messageHandler = new MessageHandler(connection);
         messageHandlersForEachClientConnection.add(messageHandler);
+
+        LinkedList<Message> messageBuffer = new LinkedList<>();
+        messageBufferForEachClientConnection.put(messageHandler, messageBuffer);
+
+        new Thread(bufferMessagesFromClient(messageBuffer, messageHandler)).start();
+
         String clientAddress = connection.getInetAddress().getHostAddress();
         LOGGER.info(() -> "New connection from " + clientAddress);
         releaseLockForHostPane();
@@ -85,16 +99,21 @@ public class Server extends Thread{
     private void doMainGameLoop() {
         LOGGER.info("Main loop started");
         while (keepServerAlive) {
+            gameUpdatePacket = new GameUpdatePacket();
             for(MessageHandler messageHandler : messageHandlersForEachClientConnection){
                 handleAllClientMessages(messageHandler);
-                //feed back to client
+            }
+            if(!gameUpdatePacket.isAnythingToUpdate()) continue;
+            for(MessageHandler messageHandler : messageHandlersForEachClientConnection){
+                messageHandler.sendMessage(gameUpdatePacket);
             }
         }
     }
 
     private void handleAllClientMessages(MessageHandler messageHandler) {
-        while(messageHandler.hasMessage()){
-            Message message = messageHandler.readMessage();
+        LinkedList<Message> messages = messageBufferForEachClientConnection.get(messageHandler);
+        while(!messages.isEmpty()) {
+            Message message = messages.remove();
             handleClientMessage(messageHandler, message);
         }
     }
@@ -112,7 +131,7 @@ public class Server extends Thread{
                 handleMouseInput();
                 break;
             case CHAT_MESSAGE:
-                handleChatMessage();
+                handleChatMessage(message.getContent());
                 break;
             default:
                 LOGGER.severe("Invalid Message type");
@@ -140,7 +159,22 @@ public class Server extends Thread{
     private void handleMouseInput() {
     }
 
-    private void handleChatMessage() {
+    private void handleChatMessage(String content) {
+        LOGGER.info(() -> "Adding chat message: " + content);
+        gameUpdatePacket.addNewChatMessage(content);
+    }
+
+    private Task<Void> bufferMessagesFromClient(LinkedList<Message> buffer, MessageHandler clientMessageHandler){
+        return new Task<Void>() {
+            @Override
+            protected Void call() throws Exception {
+                while(keepServerAlive) {
+                    Message message = clientMessageHandler.readMessage();
+                    buffer.add(message);
+                }
+                return null;
+            }
+        };
     }
 
     public void shutdownServer(){
@@ -176,12 +210,8 @@ public class Server extends Thread{
         return null;
     }
 
-    private boolean allClientsConnected(){
+    public boolean areAllClientsConnected(){
         return messageHandlersForEachClientConnection.size() == MAX_NUMBER_OF_CLIENTS;
-    }
-
-    public boolean isAnyoneConnected() {
-        return !messageHandlersForEachClientConnection.isEmpty();
     }
 
     public ConnectionDetails getConnectionDetails(){

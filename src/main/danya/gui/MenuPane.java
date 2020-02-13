@@ -20,6 +20,10 @@ public class MenuPane extends GridPane {
 
     public MenuPane() {
         setVgap(10);
+        addComponentsToPane();
+    }
+
+    private void addComponentsToPane() {
         add(getMenuTitleLabel(), 0, 0);
         add(getMenuSubtitleLabel(), 0, 1);
         add(getCreateServerButton(), 1, 2);

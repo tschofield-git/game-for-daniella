@@ -69,7 +69,7 @@ public class HostPane extends GridPane {
 
     private void startGame(){
         notifyServerOfStartGameClicked();
-        switchToGamePane();
+        GamePane.switchToGamePane(client);
     }
 
     private void notifyServerOfStartGameClicked() {
@@ -79,12 +79,6 @@ public class HostPane extends GridPane {
         }
     }
 
-    private void switchToGamePane(){
-        GamePane gamePane = new GamePane(client);
-        PaneController.switchPane(gamePane);
-        gamePane.addKeyListeners();
-    }
-
     private Task<Void> waitForClientsToConnect() {
 
         return new Task<>() {
@@ -92,7 +86,7 @@ public class HostPane extends GridPane {
             protected Void call() throws Exception {
                 synchronized (Lock.WAIT_FOR_CLIENTS_TO_CONNECT){
                     try {
-                        while(!server.isAnyoneConnected()){
+                        while(!server.areAllClientsConnected()){
                             if(isCancelled()) break;
                             Lock.WAIT_FOR_CLIENTS_TO_CONNECT.wait();
                         }

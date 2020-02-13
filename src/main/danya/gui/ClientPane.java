@@ -30,18 +30,13 @@ public class ClientPane extends GridPane {
 
         waitForHostToStartGame = waitForHostToStartGame();
         new Thread(waitForHostToStartGame).start();
+        waitForHostToStartGame.setOnSucceeded(onSuccess -> GamePane.switchToGamePane(client));
     }
 
     private void stopWaitingForHost() {
         client.closeClientConnection();
         MenuPane menuPane = new MenuPane();
         this.getScene().setRoot(menuPane);
-    }
-
-    private void switchToGamePane(){
-        GamePane gamePane = new GamePane(client);
-        PaneController.switchPane(gamePane);
-        gamePane.addKeyListeners();
     }
 
     private Task<Void> waitForHostToStartGame() {
@@ -57,7 +52,6 @@ public class ClientPane extends GridPane {
                     }
                     LOGGER.info("Game started");
                 }
-                switchToGamePane();
                 return null;
             }
         };

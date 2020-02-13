@@ -1,26 +1,19 @@
 package danya.net.messaging;
 
-public class Message {
+import java.io.Serializable;
 
-    private static final String DELIMITER = "/";
+public class Message implements Serializable {
 
-    private final MessageType messageType;
-    private final String content;
+    private MessageType messageType;
+    private String content;
 
-    public Message(MessageType type, String content){
+    public Message(MessageType type, String content) {
         this.messageType = type;
         this.content = content;
     }
 
-    public static Message parseMessage(String messageAsString){
-        String[] split = messageAsString.split(DELIMITER, 2);
-        MessageType messageType = MessageType.valueOf(split[0]);
-        return new Message(messageType, split[1]);
-    }
+    public Message(){
 
-    @Override
-    public String toString(){
-        return messageType + DELIMITER + content;
     }
 
     public MessageType getMessageType(){

@@ -1,10 +1,12 @@
 package danya.net.messaging;
 
-public enum MessageType {
+import java.io.Serializable;
+
+public enum MessageType implements Serializable {
 
     SYSTEM,
     KEY_INPUT,
     MOUSE_INPUT,
-    CHAT_MESSAGE
+    CHAT_MESSAGE;
 
 }
